@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<!--
+=============================================================
+  DNA ORIGINS GUESSING GAME
+  Single-file HTML · GitHub Pages ready · Google Apps Script backend
+=============================================================
+
+  SETUP INSTRUCTIONS:
+  ─────────────────────────────────────────────────────────────
+  STEP 1 — Create your Google Sheet
+    1. Go to sheets.google.com
+    2. Create a new spreadsheet, name it "DNA Origins Guesses"
+    3. In Row 1, add these headers in columns A–G:
+       Timestamp | Name | Email | Guess1 | Guess2 | Guess3 | Score
+    4. Note the Spreadsheet ID from the URL:
+       https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit
+
+  STEP 2 — Open Google Apps Script
+    1. In your Google Sheet, click Extensions → Apps Script
+    2. Delete all existing code in the editor
+    3. Copy the ENTIRE Apps Script code block from the bottom of
+       this file (marked clearly below) and paste it in
+    4. Replace YOUR_SPREADSHEET_ID in the Apps Script with your
+       actual Spreadsheet ID from Step 1
+    5. Click the floppy disk icon to Save
+
+  STEP 3 — Deploy as Web App
+    1. Click "Deploy" → "New deployment"
+    2. Click the gear icon next to "Type" → select "Web app"
+    3. Set Description: "DNA Origins Game"
+    4. Set "Execute as": Me
+    5. Set "Who has access": Anyone
+    6. Click "Deploy"
+    7. Authorize access when prompted (click through warnings)
+    8. COPY the Web App URL that appears (looks like:
+       https://script.google.com/macros/s/AKfycb.../exec)
+
+  STEP 4 — Paste URL into this file
+    1. Find the line below: const APPS_SCRIPT_URL = '...'
+    2. Replace the placeholder with your actual Web App URL
+    3. Save this file and upload to GitHub Pages
+
+  STEP 5 — Change admin password (optional)
+    1. Find: const ADMIN_PASSWORD = 'reveal2025'
+    2. Change 'reveal2025' to your preferred password
+
+  TROUBLESHOOTING:
+    - If submissions don't work: check the Apps Script URL is correct
+    - If admin panel is empty: make sure your Sheet has data and
+      headers exactly as listed in Step 1
+    - For CORS errors: re-deploy the Apps Script (new deployment)
+=============================================================
+-->
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adivinha a Minha Origem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ─────────────────────────────────── */
+:root {
+  --beige:     #F4EAD5;
+  --beige2:    #EDE0C4;
+  --sage:      #7E9E82;
+  --sage-lt:   #B5CBBA;
+  --sage-dk:   #5A7A5E;
+  --terra:     #C0795A;
+  --terra-lt:  #D9A088;
+  --clay:      #8B5C3E;
+  --rose:      #C98B80;
+  --ochre:     #C89A3C;
+  --ochre-lt:  #E4C278;
+  --white:     #FDFAF4;
+  --dark:      #3A2618;
+  --mid:       #6B4A35;
+  --ocean:     #C5D9E8;
+  --land:      #D2BE98;
+  --land-dk:   #B8A57E;
+
+  --sh-sm: 0 2px 10px rgba(90,60,30,.12);
+  --sh-md: 0 5px 24px rgba(90,60,30,.18);
+  --sh-lg: 0 10px 48px rgba(90,60,30,.22);
+
+  --r-pill: 60px;
+  --r-card: 22px;
+  --r-sm:   12px;
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body:    'Nunito', system-ui, sans-serif;
+}
+
+/* ── Reset ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--beige);
+  color: var(--dark);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise texture overlay ─────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: .4;
+}
+
+/* ── Nav ───────────────────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(253,250,244,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(139,92,62,.12);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+}
+.nav-brand {
+  font-family: var(--font-display);
+  font-size: 1.3rem; font-weight: 600;
+  color: var(--dark);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nav-brand span { color: var(--terra); }
+.nav-links {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap;
+}
+.nav-btn {
+  font-family: var(--font-body);
+  font-size: .82rem; font-weight: 700;
+  padding: 7px 18px;
+  border-radius: var(--r-pill);
+  border: 2px solid transparent;
+  cursor: pointer; transition: all .22s ease;
+  background: transparent; color: var(--mid);
+  letter-spacing: .03em; text-transform: uppercase;
+}
+.nav-btn:hover { background: var(--beige2); color: var(--dark); }
+.nav-btn.active {
+  background: var(--terra); color: var(--white);
+  border-color: var(--terra);
+  box-shadow: var(--sh-sm);
+}
+.nav-btn.admin-link { color: var(--clay); opacity: .55; font-size: .75rem; }
+.nav-btn.admin-link:hover { opacity: 1; }
+
+/* ── Page Sections ─────────────────────────────── */
+.page { display: none; position: relative; z-index: 1; }
+.page.active { display: block; }
+
+/* ── HOME ──────────────────────────────────────── */
+#home { padding: 0; }
+
+.hero {
+  min-height: 52vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 64px 24px 48px;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,121,90,.18) 0%, transparent 70%),
+              radial-gradient(ellipse 60% 50% at 30% 80%, rgba(126,158,130,.16) 0%, transparent 60%);
+}
+.hero-eyebrow {
+  font-size: .8rem; font-weight: 800;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--terra); margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 7vw, 5.5rem);
+  font-weight: 700; line-height: 1.05;
+  color: var(--dark);
+  margin-bottom: 16px;
+}
+.hero h1 em { color: var(--terra); font-style: italic; }
+.hero-sub {
+  font-size: clamp(.95rem, 2.5vw, 1.15rem);
+  color: var(--mid); max-width: 520px;
+  line-height: 1.65;
+  margin-bottom: 36px;
+}
+.hero-cta {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+}
+.btn {
+  font-family: var(--font-body);
+  font-size: .95rem; font-weight: 700;
+  padding: 14px 32px;
+  border-radius: var(--r-pill);
+  border: none; cursor: pointer;
+  transition: all .22s ease;
+  letter-spacing: .02em;
+}
+.btn-primary {
+  background: var(--terra); color: var(--white);
+  box-shadow: 0 4px 18px rgba(192,121,90,.4);
+}
+.btn-primary:hover {
+  background: var(--clay); transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(139,92,62,.45);
+}
+.btn-secondary {
+  background: var(--white); color: var(--dark);
+  border: 2px solid var(--beige2);
+  box-shadow: var(--sh-sm);
+}
+.btn-secondary:hover { background: var(--beige2); transform: translateY(-2px); }
+.btn-sage {
+  background: var(--sage); color: var(--white);
+  box-shadow: 0 4px 18px rgba(126,158,130,.4);
+}
+.btn-sage:hover { background: var(--sage-dk); transform: translateY(-2px); }
+.btn-sm { font-size: .82rem; padding: 9px 22px; }
+
+/* DNA decorative element */
+.dna-strand {
+  font-size: 2.5rem; margin-bottom: 8px;
+  animation: spin-slow 8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Clue Cards */
+.clues-section {
+  padding: 16px 24px 56px;
+  max-width: 1050px; margin: 0 auto;
+}
+.clues-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem; font-weight: 600;
+  text-align: center; margin-bottom: 28px;
+  color: var(--dark);
+}
+.clues-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.clue-card {
+  background: var(--white);
+  border-radius: var(--r-card);
+  padding: 28px 24px;
+  box-shadow: var(--sh-md);
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 14px;
+  border: 1.5px solid rgba(200,154,60,.15);
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.clue-card:hover { transform: translateY(-4px); box-shadow: var(--sh-lg); }
+.clue-icon {
+  font-size: 3rem; line-height: 1;
+  background: var(--beige);
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--sh-sm);
+}
+.clue-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem; font-weight: 600;
+  color: var(--dark); line-height: 1.3;
+}
+.clue-card p {
+  font-size: .88rem; color: var(--mid);
+  line-height: 1.6;
+}
+.clue-tag {
+  font-size: .72rem; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: var(--r-pill);
+  background: var(--beige); color: var(--clay);
+}
+
+/* ── FORM PAGE ─────────────────────────────────── */
+#guess-form {
+  padding: 48px 24px 72px;
+  max-width: 860px; margin: 0 auto;
+}
+.form-header {
+  text-align: center; margin-bottom: 40px;
+}
+.form-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 700;
+  color: var(--dark); margin-bottom: 10px;
+}
+.form-header p { color: var(--mid); font-size: 1rem; line-height: 1.6; }
+
+/* Form fields */
+.form-group { margin-bottom: 20px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+label {
+  display: block; font-weight: 700; font-size: .85rem;
+  color: var(--clay); letter-spacing: .05em; text-transform: uppercase;
+  margin-bottom: 7px;
+}
+input[type="text"], input[type="email"], input[type="number"],
+input[type="password"] {
+  width: 100%; padding: 13px 18px;
+  border: 2px solid rgba(139,92,62,.2);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--dark);
+  transition: border-color .2s ease, box-shadow .2s ease;
+  outline: none;
+}
+input:focus {
+  border-color: var(--terra);
+  box-shadow: 0 0 0 4px rgba(192,121,90,.14);
+}
+input::placeholder { color: rgba(107,74,53,.4); }
+
+/* Guess Slots */
+.guess-slots {
+  display: flex; gap: 12px; margin: 28px 0 24px;
+  flex-wrap: wrap;
+}
+.guess-slot {
+  flex: 1; min-width: 200px;
+  background: var(--white);
+  border-radius: var(--r-card);
+  border: 2.5px dashed rgba(139,92,62,.25);
+  padding: 16px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  transition: border-color .2s ease, background .2s ease;
+  min-height: 68px;
+}
+.guess-slot.active-slot {
+  border-color: var(--terra);
+  border-style: solid;
+  box-shadow: 0 0 0 4px rgba(192,121,90,.12);
+}
+.guess-slot.filled {
+  border-style: solid;
+  border-color: var(--sage);
+  background: rgba(126,158,130,.08);
+}
+.slot-label {
+  font-size: .72rem; font-weight: 800;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--clay); margin-bottom: 4px;
+}
+.slot-value {
+  font-size: .95rem; font-weight: 700; color: var(--dark);
+}
+.slot-empty { color: rgba(107,74,53,.35); font-size: .9rem; font-style: italic; }
+.slot-remove {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.1rem; color: var(--rose);
+  padding: 2px; border-radius: 50%;
+  transition: transform .15s ease;
+  line-height: 1;
+}
+.slot-remove:hover { transform: scale(1.2); }
+.slot-medal { font-size: 1.3rem; }
+
+/* Map Section */
+.map-section {
+  background: var(--white);
+  border-radius: var(--r-card);
+  padding: 24px;
+  box-shadow: var(--sh-sm);
+  margin-bottom: 24px;
+}
+.map-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem; font-weight: 600;
+  margin-bottom: 8px; color: var(--dark);
+}
+.map-hint {
+  font-size: .82rem; color: var(--mid); margin-bottom: 16px;
+}
+.map-container {
+  width: 100%; border-radius: 14px;
+  overflow: hidden; box-shadow: var(--sh-sm);
+}
+#world-map {
+  width: 100%; height: auto;
+  display: block;
+  background: var(--ocean);
+}
+
+/* Category Grid */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.cat-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px;
+  border-radius: var(--r-pill);
+  border: 2px solid rgba(139,92,62,.18);
+  background: var(--white);
+  cursor: pointer; transition: all .18s ease;
+  font-family: var(--font-body); font-size: .87rem; font-weight: 600;
+  color: var(--dark); text-align: left;
+}
+.cat-btn:hover { transform: translateY(-2px); box-shadow: var(--sh-sm); }
+.cat-btn.selected-1 { background: rgba(192,121,90,.15); border-color: var(--terra); color: var(--clay); }
+.cat-btn.selected-2 { background: rgba(200,154,60,.15); border-color: var(--ochre); color: var(--clay); }
+.cat-btn.selected-3 { background: rgba(126,158,130,.15); border-color: var(--sage); color: var(--sage-dk); }
+.cat-btn.selected-1:hover, .cat-btn.selected-2:hover, .cat-btn.selected-3:hover {
+  transform: none; cursor: pointer;
+}
+.cat-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.cat-flag { font-size: 1rem; flex-shrink: 0; }
+.cat-selected-badge {
+  margin-left: auto; font-size: .72rem; font-weight: 800;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: rgba(0,0,0,.06); letter-spacing: .05em;
+  white-space: nowrap;
+}
+
+/* Form Submit */
+.form-submit-area {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; margin-top: 32px;
+}
+.form-submit-area .btn { width: 100%; max-width: 340px; font-size: 1.05rem; padding: 16px 32px; }
+.form-note { font-size: .8rem; color: var(--mid); text-align: center; }
+
+/* ── ADMIN PAGE ────────────────────────────────── */
+#admin { padding: 48px 24px 72px; max-width: 980px; margin: 0 auto; }
+
+.admin-login {
+  max-width: 400px; margin: 60px auto;
+  background: var(--white); border-radius: var(--r-card);
+  padding: 40px 36px; text-align: center;
+  box-shadow: var(--sh-md);
+}
+.admin-login h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem; font-weight: 600;
+  margin-bottom: 8px;
+}
+.admin-login p { color: var(--mid); margin-bottom: 24px; font-size: .9rem; }
+.admin-login .form-group { text-align: left; }
+.admin-login .btn { width: 100%; margin-top: 12px; }
+
+.admin-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+.admin-panel-header h2 {
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 700;
+}
+
+/* Admin tabs */
+.admin-tabs {
+  display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 10px 22px; border-radius: var(--r-pill);
+  border: 2px solid rgba(139,92,62,.18);
+  background: var(--white); cursor: pointer;
+  font-family: var(--font-body); font-size: .88rem; font-weight: 700;
+  color: var(--mid); transition: all .2s ease;
+}
+.tab-btn.active { background: var(--dark); color: var(--white); border-color: var(--dark); }
+.tab-btn:hover:not(.active) { background: var(--beige2); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* Data table */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--r-card); box-shadow: var(--sh-sm);
+}
+table {
+  width: 100%; border-collapse: collapse;
+  background: var(--white);
+  font-size: .88rem;
+}
+th {
+  background: var(--dark); color: var(--beige);
+  padding: 12px 16px; text-align: left;
+  font-weight: 700; letter-spacing: .05em; font-size: .78rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+th:first-child { border-radius: var(--r-sm) 0 0 0; }
+th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+td {
+  padding: 11px 16px; border-bottom: 1px solid var(--beige2);
+  color: var(--dark);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(244,234,213,.5); }
+.empty-state {
+  text-align: center; padding: 48px 24px;
+  color: var(--mid); font-style: italic;
+  background: var(--white); border-radius: var(--r-card);
+  box-shadow: var(--sh-sm);
+}
+
+/* DNA Results Input */
+.dna-input-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+.dna-cat-input {
+  background: var(--white); border-radius: var(--r-sm);
+  padding: 14px 18px; box-shadow: var(--sh-sm);
+  display: flex; align-items: center; gap: 12px;
+}
+.dna-cat-input .cat-dot { width: 14px; height: 14px; }
+.dna-cat-input label {
+  font-size: .82rem; margin-bottom: 0; flex: 1;
+  text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--dark);
+}
+.dna-cat-input input {
+  width: 72px; padding: 7px 10px; font-size: .9rem; text-align: center;
+  border-radius: 8px;
+}
+.dna-total-bar {
+  background: var(--white); border-radius: var(--r-sm);
+  padding: 16px 20px; box-shadow: var(--sh-sm);
+  display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+}
+.dna-total-label { font-weight: 700; color: var(--clay); flex: 1; }
+.dna-total-value { font-size: 1.4rem; font-weight: 800; }
+.dna-total-value.ok { color: var(--sage-dk); }
+.dna-total-value.warn { color: var(--terra); }
+.progress-bar-wrap {
+  flex: 2; height: 10px; background: var(--beige2); border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: var(--r-pill);
+  background: var(--sage); transition: width .4s ease, background .3s ease;
+}
+.progress-bar-fill.warn { background: var(--terra); }
+
+/* Leaderboard */
+.leaderboard-list { display: flex; flex-direction: column; gap: 12px; }
+.leader-card {
+  background: var(--white); border-radius: var(--r-card);
+  padding: 18px 22px; display: flex; align-items: center; gap: 16px;
+  box-shadow: var(--sh-sm); transition: transform .18s ease;
+}
+.leader-card:hover { transform: translateX(4px); }
+.leader-card:nth-child(1) { border-left: 4px solid #D4AF37; }
+.leader-card:nth-child(2) { border-left: 4px solid #A8A8A8; }
+.leader-card:nth-child(3) { border-left: 4px solid #CD7F32; }
+.leader-rank {
+  font-size: 1.5rem; font-weight: 800; font-family: var(--font-display);
+  color: var(--clay); width: 44px; text-align: center; flex-shrink: 0;
+}
+.leader-info { flex: 1; }
+.leader-name { font-weight: 700; font-size: 1rem; color: var(--dark); }
+.leader-guesses { font-size: .82rem; color: var(--mid); margin-top: 3px; }
+.leader-score {
+  text-align: right; flex-shrink: 0;
+}
+.leader-pts { font-size: 1.5rem; font-weight: 800; color: var(--terra); }
+.leader-pts-label { font-size: .72rem; font-weight: 700; color: var(--mid); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── PUBLIC LEADERBOARD ─────────────────────────── */
+#leaderboard-page {
+  padding: 48px 24px 72px;
+  max-width: 680px; margin: 0 auto;
+}
+#leaderboard-page h2 {
+  font-family: var(--font-display);
+  font-size: 2.2rem; font-weight: 700;
+  text-align: center; margin-bottom: 8px;
+}
+#leaderboard-page .subtitle {
+  text-align: center; color: var(--mid); margin-bottom: 36px; font-size: .95rem;
+}
+.personal-lookup {
+  background: var(--white); border-radius: var(--r-card);
+  padding: 24px 28px; box-shadow: var(--sh-sm);
+  margin-bottom: 32px;
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.personal-lookup .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+.personal-result {
+  margin-top: 16px; width: 100%;
+  padding: 14px 18px; border-radius: var(--r-sm);
+  background: rgba(126,158,130,.12); border: 1.5px solid var(--sage);
+  font-size: .95rem; color: var(--dark);
+  display: none;
+}
+.personal-result.visible { display: block; }
+
+/* ── Toast ──────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 28px; right: 28px; z-index: 999;
+  background: var(--dark); color: var(--white);
+  padding: 14px 22px; border-radius: var(--r-pill);
+  font-size: .9rem; font-weight: 600;
+  box-shadow: var(--sh-lg);
+  transform: translateY(80px); opacity: 0;
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+  max-width: 340px;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: var(--sage-dk); }
+#toast.error { background: #A03535; }
+
+/* ── SVG Map Region Colors ──────────────────────── */
+/* SVG overlay should not block clicks on regions */
+#map-overlay {
+  pointer-events: none;
+}
+
+/* But regions themselves should be clickable */
+.region-highlight {
+  
+  pointer-events: auto !important;
+  cursor: pointer;
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+}
+
+
+.region-highlight:hover {
+  opacity: 0.5 !important;
+  stroke-width: 3;
+}
+
+/* ── Section separator ──────────────────────────── */
+.section-divider {
+  text-align: center; padding: 16px;
+  font-size: .78rem; font-weight: 800;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: rgba(139,92,62,.4);
+}
+
+/* ── Stats bar (home page) ──────────────────────── */
+.stats-bar {
+  display: flex; justify-content: center; gap: 48px;
+  padding: 28px 24px;
+  background: rgba(253,250,244,.7);
+  border-top: 1px solid rgba(139,92,62,.1);
+  border-bottom: 1px solid rgba(139,92,62,.1);
+  flex-wrap: wrap; margin-bottom: 0;
+}
+.stat-item { text-align: center; }
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 700; color: var(--terra);
+  display: block; line-height: 1;
+}
+.stat-lbl { font-size: .75rem; font-weight: 700; color: var(--mid);
+  text-transform: uppercase; letter-spacing: .1em; margin-top: 4px; }
+
+/* ── Utility ────────────────────────────────────── */
+.hidden { display: none !important; }
+.flex-gap { display: flex; gap: 10px; flex-wrap: wrap; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.text-center { text-align: center; }
+.info-box {
+  background: rgba(200,154,60,.1); border: 1.5px solid rgba(200,154,60,.3);
+  border-radius: var(--r-sm); padding: 14px 18px;
+  font-size: .88rem; color: var(--clay); line-height: 1.6;
+}
+.info-box strong { color: var(--dark); }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 680px) {
+  nav { padding: 12px 16px; }
+  .nav-brand { font-size: 1.1rem; }
+  .nav-btn { padding: 6px 14px; font-size: .75rem; }
+  .clues-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .guess-slots { flex-direction: column; }
+  .guess-slot { min-width: unset; }
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .cat-btn {
+    padding: 8px 12px;
+    font-size: .75rem;
+  }
+  .stats-bar { gap: 28px; }
+  .dna-input-grid { grid-template-columns: 1fr; }
+  .personal-lookup { flex-direction: column; }
+}
+@media (max-width: 420px) {
+  .hero h1 { font-size: 2.2rem; }
+  .category-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══════════════════════════════════════════ -->
+<nav>
+  <div class="nav-brand" onclick="showPage('home')">目 <span>De onde vem a Leo?</div>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="showPage('home')" id="nav-home">Início</button>
+    <button class="nav-btn" onclick="showPage('guess-form')" id="nav-form">Aposta</button>
+    <button class="nav-btn" onclick="showPage('leaderboard-page')" id="nav-lb">Classificação</button>
+    <button class="nav-btn admin-link" onclick="showPage('admin')" id="nav-admin">Administração</button>
+  </div>
+</nav>
+
+<!-- ═══ HOME PAGE ═══════════════════════════════════════ -->
+<section id="home" class="page active">
+  <div class="hero">
+    <div class="dna-strand">目</div>
+    <div class="hero-eyebrow">todos se perguntam</div>
+    <h1>De onde vem a Leo?<br><em>Vamos descobrir.</em></h1>
+    <p class="hero-sub">
+      Sempre quisemos saber a resposta à mitica frase de Daniel Oliveira: 
+      <strong>o que dizem os teus olhos?</strong> 
+    </p>
+    <div class="hero-cta">
+      <button class="btn btn-primary" onclick="showPage('guess-form')">Aposta</button>
+    </div>
+  </div>
+  
+</section>
+
+<!-- ═══ GUESS FORM ══════════════════════════════════════ -->
+<section id="guess-form" class="page">
+  <div style="max-width:860px; margin:0 auto; padding:48px 24px 72px;">
+    <div class="form-header">
+      <h2>Aposta</h2>
+      <p>Escolhe <strong>o teu top 3 de origens</strong>.</p>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="inp-name">Nome *</label>
+        <input type="text" id="inp-name" placeholder="Maria Albertina" maxlength="60">
+      </div>
+
+    </div>
+
+    <!-- Guess Slots -->
+    <div class="section-divider">O teu top 3</div>
+    <div class="guess-slots">
+      <div class="guess-slot active-slot" id="slot-1" onclick="setActiveSlot(1)">
+        <div>
+          <div class="slot-label">1ª escolha</div>
+          <div class="slot-value slot-empty" id="slot-1-val">Escolhe uma categoria abaixo</div>
+        </div>
+      </div>
+      <div class="guess-slot" id="slot-2" onclick="setActiveSlot(2)">
+        <div>
+          <div class="slot-label">2ª escolha</div>
+          <div class="slot-value slot-empty" id="slot-2-val">Escolhe uma categoria abaixo</div>
+        </div>
+      </div>
+      <div class="guess-slot" id="slot-3" onclick="setActiveSlot(3)">
+        <div>
+          <div class="slot-label">3ª escolha</div>
+          <div class="slot-value slot-empty" id="slot-3-val">Escolhe uma categoria abaixo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+  <div class="map-section">
+  <h3>Mapa do mundo</h3>
+  <p class="map-hint">Passa o rato por uma categoria abaixo para destacar a sua região no mapa.</p>
+  
+
+    <!-- SVG overlay with actual region paths -->
+<div class="map-container" style="position: relative; width: 100%;">
+  <!-- Your map image -->
+  <img src="https://i.pinimg.com/1200x/85/6f/ff/856fff5ab8e6fa8992f049f8dbdf5996.jpg" 
+       alt="World Map"
+       style="width: 100%; display: block; border-radius: 24px;">
+  
+  <!-- SVG overlay with correct viewBox matching image's intrinsic size -->
+<svg id="map-overlay" 
+     viewBox="0 0 1199 800" 
+     preserveAspectRatio="none"
+     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+
+    <!-- 1. Iberian -->
+    <path id="region-iberian" class="region-highlight" 
+          d="M 559 374 Q 548 368 540 363 Q 532 355 536 344 Q 538 335 546 329 Q 575 338 601 342 Q 608 355 599 371 Q 588 378 576 375 Z"
+          fill="#C0795A" stroke="#C0795A" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 2. Italian & Greek -->
+    <path id="region-italian-greek" class="region-highlight"
+          d="M 638 376 Q 625 370 611 365 Q 600 348 599 331 Q 618 320 636 322 Q 655 340 665 363 Q 662 372 659 379 Z"
+          fill="#C89A3C" stroke="#C89A3C" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 3. Northwest European -->
+    <path id="region-northwest-european" class="region-highlight"
+          d="M 553 318 Q 558 330 563 340 Q 575 348 587 352 Q 592 347 598 341 Q 602 335 607 327 Q 614 318 620 310 Q 618 298 613 288 Q 598 292 581 296 Q 578 304 577 311 Z"
+          fill="#7E9E82" stroke="#7E9E82" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 4. Celtic (UK/Ireland) -->
+    <path id="region-celtic" class="region-highlight"
+          d="M 565 317 Q 553 318 542 318 Q 535 305 532 294 Q 538 282 546 270 Q 554 266 562 263 Q 572 272 579 281 Q 582 290 585 299 Q 582 306 579 312 Z"
+          fill="#5A7A5E" stroke="#5A7A5E" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 5. Scandinavian & Finnish -->
+    <path id="region-scandinavian-finnish" class="region-highlight"
+          d="M 628 286 Q 620 290 613 293 Q 600 288 587 283 Q 580 270 575 259 Q 588 232 601 204 Q 622 196 644 189 Q 641 214 638 239 Q 634 258 631 276 Z"
+          fill="#7EC8D8" stroke="#7EC8D8" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 6. Eastern European -->
+    <path id="region-eastern-european" class="region-highlight"
+          d="M 675 338 Q 648 338 619 339 Q 610 328 604 316 Q 612 300 621 287 Q 642 288 662 288 Q 674 304 685 320 Z"
+          fill="#A07A8F" stroke="#A07A8F" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 7. Jewish -->
+    <path id="region-jewish" class="region-highlight"
+          d="M 708 437 Q 693 422 678 407 Q 681 390 684 373 Q 706 365 728 357 Q 745 373 762 389 Q 760 410 757 431 Z"
+          fill="#D4AF37" stroke="#D4AF37" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 8. North African & Middle Eastern -->
+    <path id="region-north-african-middle-eastern" class="region-highlight"
+          d="M 607 441 Q 578 428 546 413 Q 547 392 549 372 Q 578 368 605 364 Q 626 372 646 381 Q 668 382 692 383 Q 706 408 719 432 Q 703 442 687 452 Q 658 452 629 450 Z"
+          fill="#D4A853" stroke="#D4A853" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 9. East Asian -->
+    <path id="region-east-asian" class="region-highlight"
+          d="M 973 426 Q 942 436 912 446 Q 874 430 836 415 Q 810 390 786 363 Q 800 335 813 306 Q 858 305 903 303 Q 945 310 986 317 Q 1000 348 1012 379 Z"
+          fill="#D47A7A" stroke="#D47A7A" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 10. Southeast Asian & Pacific -->
+    <path id="region-southeast-asian-pacific" class="region-highlight"
+          d="M 908 538 Q 894 504 880 471 Q 912 472 943 471 Q 962 448 982 424 Q 1032 438 1082 450 Q 1112 488 1141 527 Q 1122 548 1104 567 Q 1056 552 1007 535 Q 968 542 929 549 Z"
+          fill="#5A9EA0" stroke="#5A9EA0" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 11. Indigenous American (North America) -->
+    <path id="region-indigenous-american-north" class="region-highlight"
+          d="M 378 404 Q 328 412 279 420 Q 206 398 133 376 Q 135 342 138 309 Q 105 258 72 205 Q 160 162 248 121 Q 342 205 439 288 Z"
+          fill="#A05A3A" stroke="#A05A3A" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- Indigenous American (South America) -->
+    <path id="region-indigenous-american-south" class="region-highlight"
+          d="M 313 733 Q 268 608 224 481 Q 300 435 375 390 Q 451 454 527 518 Q 506 616 484 713 Z"
+          fill="#A05A3A" stroke="#A05A3A" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+    <!-- 12. African (Sub-Saharan) -->
+    <path id="region-african" class="region-highlight"
+          d="M 590 611 Q 586 566 582 522 Q 528 474 475 427 Q 562 424 648 421 Q 712 450 774 479 Q 741 568 707 656 Q 666 660 624 664 Z"
+          fill="#C49A3A" stroke="#C49A3A" stroke-width="5" 
+          stroke-linejoin="round" stroke-linecap="round" opacity="0"/>
+    
+  </svg>
+</div>
+
+  <!-- Category buttons -->
+  <div class="category-grid" id="category-grid"></div>
+</div>
+
+    <!-- Submit -->
+    <div class="form-submit-area">
+      <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" style="width:100%;max-width:360px;font-size:1.05rem;padding:18px;">
+        Apostar!
+      </button>
+      <p class="form-note">A tua aposta vai ser guardada e revelada.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ADMIN PAGE ══════════════════════════════════════ -->
+<section id="admin" class="page">
+  <!-- Login -->
+  <div class="admin-login" id="admin-login-view">
+    <div style="font-size:2.5rem;margin-bottom:12px;"></div>
+    <h2>Admin</h2>
+
+    <div class="form-group">
+      <label for="admin-pwd">Passe</label>
+      <input type="password" id="admin-pwd" onkeydown="if(event.key==='Enter')checkAdmin()">
+    </div>
+    <button class="btn btn-primary" onclick="checkAdmin()">ok</button>
+  </div>
+
+  <!-- Panel -->
+  <div id="admin-panel" class="hidden">
+    <div class="admin-panel-header">
+      <h2>🧬 Painel de Administração</h2>
+      <div class="flex-gap">
+        <button class="btn btn-secondary btn-sm" onclick="loadGuesses()">↻ Atualizar</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="lockAdmin()">🔒 Bloquear</button>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="tab-btn active" onclick="showTab('tab-guesses')">📋 Todos os palpites</button>
+      <button class="tab-btn" onclick="showTab('tab-dna')">🧬 Inserir resultados de DNA</button>
+      <button class="tab-btn" onclick="showTab('tab-leaderboard')">Classificação</button>
+    </div>
+
+    <!-- Tab: Guesses -->
+    <div class="tab-pane active" id="tab-guesses">
+      <div class="table-wrap" id="guesses-table-wrap">
+        <div class="empty-state">A carregar palpites…</div>
+      </div>
+    </div>
+
+    <!-- Tab: DNA Results -->
+    <div class="tab-pane" id="tab-dna">
+      <div class="info-box mt-16" style="margin-bottom:20px;">
+        <strong>Insere os teus resultados reais do MyHeritage DNA.</strong><br>
+        Introduz percentagens para cada categoria — devem somar 100%.
+        Os resultados são guardados localmente (localStorage) e opcionalmente na tua folha Google.
+      </div>
+
+      <div class="dna-total-bar">
+        <span class="dna-total-label">Total Percentage</span>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="dna-progress" style="width:0%"></div></div>
+        <span class="dna-total-value" id="dna-total">0%</span>
+      </div>
+
+      <div class="dna-input-grid" id="dna-input-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <div class="flex-gap mt-24">
+        <button class="btn btn-primary" onclick="saveDNA()">💾 Guardar resultados de DNA</button>
+        <button class="btn btn-secondary" onclick="clearDNA()">🗑 Limpar</button>
+      </div>
+    </div>
+
+    <!-- Tab: Leaderboard -->
+    <div class="tab-pane" id="tab-leaderboard">
+      <div class="info-box mt-16" style="margin-bottom:20px;" id="lb-info">
+        Insere resultados DNA primeiro para calcular pontuações.
+      </div>
+      <div id="admin-leaderboard-container">
+        <div class="empty-state">Ainda não há resultados de DNA inseridos.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PUBLIC LEADERBOARD ══════════════════════════════ -->
+<section id="leaderboard-page" class="page">
+  <div style="max-width:680px; margin:0 auto; padding:48px 24px 72px;">
+    <h2 style="font-family:var(--font-display);font-size:2.2rem;font-weight:700;text-align:center;margin-bottom:8px;">Classificação</h2>
+   
+
+    <div id="results-not-revealed" class="info-box text-center" style="margin-bottom:28px;display:none;">
+      <strong>Os resultados de ADN ainda não chegaram</strong><br>
+    </div>
+
+
+
+    <div id="public-leaderboard">
+      <div class="empty-state">A classificação aparecerá aqui depois de os resultados serem revelados.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOAST ════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+  JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+// ══════════════════════════════════════════════════════════
+// ⚙️  CONFIG — CHANGE THESE
+// ══════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJSvKy5AkcG0m_AekAu6PuUZm9DQlNMi7MbVAHJN7YBVWdlOk1yhXIKOYFlnqsSrBT/exec';
+const ADMIN_PASSWORD = 'reveal2025';
+
+// ══════════════════════════════════════════════════════════
+// 🗂  CATEGORY DATA
+// ══════════════════════════════════════════════════════════
+const CATEGORIES = [
+  { id: 'iberian', label: 'Ibérico', color: '#E8A87C', regions: ['region-iberian'] },
+  { id: 'italian-greek', label: 'Italiano e Grego', color: '#D4A373', regions: ['region-italian-greek'] },
+  { id: 'northwest-european', label: 'Noroeste Europeu', color: '#A3B18A', regions: ['region-northwest-european'] },
+  { id: 'celtic', label: 'Céltico', color: '#588157', regions: ['region-celtic'] },
+  { id: 'scandinavian-finnish', label: 'Escandinavo e Finlandês', color: '#84A59D', regions: ['region-scandinavian-finnish'] },
+  { id: 'eastern-european', label: 'Leste Europeu', color: '#B5838D', regions: ['region-eastern-european'] },
+  { id: 'jewish', label: 'Judaico', color: '#E9C46A', regions: ['region-jewish'] },
+  { id: 'north-african-middle-eastern', label: 'Norte Africano e Médio Oriente', color: '#E3B074', regions: ['region-north-african-middle-eastern'] },
+  { id: 'east-asian', label: 'Leste Asiático', color: '#E5989B', regions: ['region-east-asian'] },
+  { id: 'southeast-asian-pacific', label: 'Sudeste Asiático e Pacífico', color: '#6C9EBF', regions: ['region-southeast-asian-pacific'] },
+  { id: 'indigenous-american', label: 'Indígena Americano', color: '#C17A5B', regions: ['region-indigenous-american-north', 'region-indigenous-american-south'] },
+  { id: 'african', label: 'Africano', color: '#D9A13B', regions: ['region-african'] },
+];
+
+// Map SVG region IDs to category IDs
+const REGION_TO_CATEGORY = {
+  'region-iberian': 'iberian',
+  'region-italian-greek': 'italian-greek',
+  'region-northwest-european': 'northwest-european',
+  'region-celtic': 'celtic',
+  'region-scandinavian-finnish': 'scandinavian-finnish',
+  'region-eastern-european': 'eastern-european',
+  'region-jewish': 'jewish',
+  'region-north-african-middle-eastern': 'north-african-middle-eastern',
+  'region-east-asian': 'east-asian',
+  'region-southeast-asian-pacific': 'southeast-asian-pacific',
+  'region-indigenous-american-north': 'indigenous-american',
+  'region-indigenous-american-south': 'indigenous-american',
+  'region-african': 'african'
+};
+
+const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+// ══════════════════════════════════════════════════════════
+// 🏠  STATE
+// ══════════════════════════════════════════════════════════
+let guesses = ['', '', ''];
+let activeSlot = 0;
+let allSubmissions = [];
+let dnaResults = {};
+let adminUnlocked = false;
+
+// ══════════════════════════════════════════════════════════
+// 🧭  NAVIGATION
+// ══════════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const navMap = { home: 'nav-home', 'guess-form': 'nav-form', 'leaderboard-page': 'nav-lb', admin: 'nav-admin' };
+  if (navMap[id]) document.getElementById(navMap[id]).classList.add('active');
+  window.scrollTo(0, 0);
+  if (id === 'leaderboard-page') renderPublicLeaderboard();
+  if (id === 'admin' && adminUnlocked) { loadGuesses(); loadDNAInputs(); }
+}
+
+// ══════════════════════════════════════════════════════════
+// 🗺️  MAP INTERACTION
+// ══════════════════════════════════════════════════════════
+function highlightRegions(catId, on) {
+  document.querySelectorAll('.region-highlight').forEach(el => {
+    if (el.getAttribute('data-permanent') !== 'true') {
+      el.classList.remove('active');
+      el.style.opacity = '';
+    }
+  });
+  if (!on || !catId) return;
+  const cat = CAT_MAP[catId];
+  if (!cat) return;
+  cat.regions.forEach(rid => {
+    const el = document.getElementById(rid);
+    if (el && el.getAttribute('data-permanent') !== 'true') {
+      el.classList.add('active');
+      el.style.opacity = '0.72';
+    }
+  });
+}
+
+function updatePermanentHighlights() {
+  document.querySelectorAll('.region-highlight').forEach(el => {
+    el.removeAttribute('data-permanent');
+    el.classList.remove('active');
+    el.style.opacity = '';
+    el.style.strokeWidth = '2';
+  });
+  const selectedCategories = guesses.filter(catId => catId !== '');
+  selectedCategories.forEach((catId, index) => {
+    const cat = CAT_MAP[catId];
+    if (!cat) return;
+    const opacity = index === 0 ? 0.85 : (index === 1 ? 0.7 : 0.55);
+    const strokeWidth = index === 0 ? 4 : (index === 1 ? 3 : 2.5);
+    cat.regions.forEach(rid => {
+      const el = document.getElementById(rid);
+      if (el) {
+        el.setAttribute('data-permanent', 'true');
+        el.classList.add('active');
+        el.style.opacity = opacity;
+        el.style.strokeWidth = strokeWidth;
+      }
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// 🎛️  FORM & GUESS LOGIC
+// ══════════════════════════════════════════════════════════
+function initCategoryGrid() {
+  const grid = document.getElementById('category-grid');
+  grid.innerHTML = CATEGORIES.map(cat => `
+    <button class="cat-btn" id="cat-${cat.id}"
+      onmouseenter="highlightRegions('${cat.id}', true)"
+      onmouseleave="highlightRegions(null, false)"
+      onclick="selectCategory('${cat.id}')">
+      <span class="cat-dot" style="background:${cat.color}"></span>
+      <span>${cat.label}</span>
+      <span class="cat-selected-badge hidden" id="badge-${cat.id}"></span>
+    </button>
+  `).join('');
+}
+
+function setActiveSlot(n) {
+  activeSlot = n - 1;
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`slot-${i}`);
+    el.classList.toggle('active-slot', i === n && !guesses[i-1]);
+  }
+}
+
+function selectCategory(catId) {
+  const existing = guesses.indexOf(catId);
+  if (existing !== -1) {
+    guesses[existing] = '';
+    updateSlotDisplay(existing);
+    updateCatButton(catId, -1);
+    setNextActiveSlot();
+    updatePermanentHighlights();
+    return;
+  }
+  const targetSlot = activeSlot < 3 && guesses[activeSlot] === '' ? activeSlot : guesses.findIndex(g => g === '');
+  if (targetSlot === -1) { 
+    showToast('Os 3 slots estão preenchidos! Clica numa escolha para removê-la.', 'info'); 
+    return; 
+  }
+  guesses[targetSlot] = catId;
+  updateSlotDisplay(targetSlot);
+  updateCatButton(catId, targetSlot);
+  setNextActiveSlot();
+  updatePermanentHighlights();
+}
+
+function setNextActiveSlot() {
+  const next = guesses.findIndex(g => g === '');
+  activeSlot = next !== -1 ? next : 3;
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById(`slot-${i+1}`);
+    el.classList.toggle('active-slot', i === activeSlot && !guesses[i]);
+    el.classList.toggle('filled', !!guesses[i]);
+  }
+}
+
+function updateSlotDisplay(idx) {
+  const valEl = document.getElementById(`slot-${idx+1}-val`);
+  const slot = document.getElementById(`slot-${idx+1}`);
+  if (guesses[idx]) {
+    const cat = CAT_MAP[guesses[idx]];
+    valEl.textContent = `${cat.label}`;
+    valEl.classList.remove('slot-empty');
+    slot.classList.add('filled');
+    slot.classList.remove('active-slot');
+  } else {
+    valEl.textContent = 'Escolhe uma categoria abaixo';
+    valEl.classList.add('slot-empty');
+    slot.classList.remove('filled');
+  }
+}
+
+function updateCatButton(catId, slotIdx) {
+  const btn = document.getElementById(`cat-${catId}`);
+  const badge = document.getElementById(`badge-${catId}`);
+  btn.classList.remove('selected-1','selected-2','selected-3');
+  if (slotIdx === -1) { 
+    badge.textContent = ''; 
+    badge.classList.add('hidden'); 
+    return; 
+  }
+  const labels = ['1st','2nd','3rd'];
+  btn.classList.add(`selected-${slotIdx+1}`);
+  badge.textContent = labels[slotIdx];
+  badge.classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════════════
+// 📤  FORM SUBMISSION
+// ══════════════════════════════════════════════════════════
+async function submitGuess() {
+  const name = document.getElementById('inp-name').value.trim();
+  const email = document.getElementById('inp-email')?.value.trim() || '';
+  if (!name) { showToast('Por favor, escreve o teu nome!', 'error'); return; }
+  if (guesses.filter(Boolean).length < 3) { showToast('Por favor, escolhe os 3 palpites!', 'error'); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '⏳ A enviar…'; btn.disabled = true;
+  const payload = { action: 'addGuess', name, email, guess1: guesses[0], guess2: guesses[1], guess3: guesses[2], timestamp: new Date().toISOString() };
+  try {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+      const existing = JSON.parse(localStorage.getItem('dna_guesses') || '[]');
+      existing.push(payload);
+      localStorage.setItem('dna_guesses', JSON.stringify(existing));
+      showToast('✅ Palpite guardado (modo demo)', 'success');
+    } else {
+      await fetch(APPS_SCRIPT_URL, { method: 'POST', body: new URLSearchParams(payload) });
+      showToast('✅ Palpite enviado! Boa sorte!', 'success');
+    }
+    guesses = ['','','']; activeSlot = 0;
+    for (let i = 0; i < 3; i++) updateSlotDisplay(i);
+    CATEGORIES.forEach(c => updateCatButton(c.id, -1));
+    setNextActiveSlot();
+    updatePermanentHighlights();
+    document.getElementById('inp-name').value = '';
+    if (document.getElementById('inp-email')) document.getElementById('inp-email').value = '';
+    setTimeout(() => showPage('home'), 1500);
+  } catch(err) { showToast('Algo correu mal.', 'error'); console.error(err);
+  } finally { btn.textContent = '🧬 Enviar o meu palpite'; btn.disabled = false; }
+}
+
+// ══════════════════════════════════════════════════════════
+// 🔐  ADMIN (simplified - keep your existing functions)
+// ══════════════════════════════════════════════════════════
+function checkAdmin() {
+  const pwd = document.getElementById('admin-pwd').value;
+  if (pwd === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    document.getElementById('admin-login-view').classList.add('hidden');
+    document.getElementById('admin-panel').classList.remove('hidden');
+    loadGuesses();
+    loadDNAInputs();
+    loadDNAFromStorage();
+  } else { showToast('Palavra-passe incorreta', 'error'); document.getElementById('admin-pwd').value = ''; }
+}
+function lockAdmin() { adminUnlocked = false; document.getElementById('admin-login-view').classList.remove('hidden'); document.getElementById('admin-panel').classList.add('hidden'); document.getElementById('admin-pwd').value = ''; }
+function showTab(tabId) { document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(tabId).classList.add('active'); event.target.classList.add('active'); if (tabId === 'tab-leaderboard') renderAdminLeaderboard(); }
+
+// ══════════════════════════════════════════════════════════
+// 📊  LOAD GUESSES (simplified)
+// ══════════════════════════════════════════════════════════
+async function loadGuesses() { const wrap = document.getElementById('guesses-table-wrap'); wrap.innerHTML = '<div class="empty-state">A carregar…</div>'; try { let data = []; if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') { data = JSON.parse(localStorage.getItem('dna_guesses') || '[]'); } else { const res = await fetch(`${APPS_SCRIPT_URL}?action=getGuesses`); const json = await res.json(); data = json.data || []; } allSubmissions = data; renderGuessTable(data); } catch(err) { wrap.innerHTML = '<div class="empty-state">Erro ao carregar dados.</div>'; } }
+function renderGuessTable(data) { const wrap = document.getElementById('guesses-table-wrap'); if (!data.length) { wrap.innerHTML = '<div class="empty-state">Ainda não há palpites enviados.</div>'; return; } const rows = data.map((r, i) => `<tr><td>${i+1}</td><td><strong>${esc(r.name || r.Name || '')}</strong></td><td>${esc(r.email || r.Email || '—')}</td><td>${catLabel(r.guess1 || r.Guess1 || '')}</td><td>${catLabel(r.guess2 || r.Guess2 || '')}</td><td>${catLabel(r.guess3 || r.Guess3 || '')}</td><td>${fmtDate(r.timestamp || r.Timestamp || '')}</td></tr>`).join(''); wrap.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Email</th><th>🥇 1.º</th><th>🥈 2.º</th><th>🥉 3.º</th><th>Quando</th></tr></thead><tbody>${rows}</tbody></table>`; }
+
+// ══════════════════════════════════════════════════════════
+// 🧬  DNA RESULTS
+// ══════════════════════════════════════════════════════════
+function loadDNAInputs() { const grid = document.getElementById('dna-input-grid'); grid.innerHTML = CATEGORIES.map(cat => `<div class="dna-cat-input"><span class="cat-dot" style="background:${cat.color}"></span><label>${cat.label}</label><input type="number" id="dna-${cat.id}" min="0" max="100" step="0.1" placeholder="0" oninput="updateDNATotal()"></div>`).join(''); }
+function loadDNAFromStorage() { const stored = localStorage.getItem('dna_results'); if (!stored) return; try { dnaResults = JSON.parse(stored); CATEGORIES.forEach(cat => { const inp = document.getElementById(`dna-${cat.id}`); if (inp && dnaResults[cat.id] != null) inp.value = dnaResults[cat.id]; }); updateDNATotal(); } catch(e) {} }
+function updateDNATotal() { let total = 0; CATEGORIES.forEach(cat => { const v = parseFloat(document.getElementById(`dna-${cat.id}`)?.value || 0); total += isNaN(v) ? 0 : v; }); total = Math.round(total * 10) / 10; const el = document.getElementById('dna-total'); const bar = document.getElementById('dna-progress'); el.textContent = total + '%'; const ok = total >= 99 && total <= 101; el.classList.toggle('ok', ok); el.classList.toggle('warn', !ok); bar.style.width = Math.min(total, 100) + '%'; bar.classList.toggle('warn', !ok); }
+function saveDNA() { const results = {}; let total = 0; CATEGORIES.forEach(cat => { const v = parseFloat(document.getElementById(`dna-${cat.id}`)?.value || 0); results[cat.id] = isNaN(v) ? 0 : v; total += results[cat.id]; }); total = Math.round(total * 10) / 10; if (total < 99 || total > 101) { showToast(`Total é ${total}% — deve ser 100%.`, 'error'); return; } dnaResults = results; localStorage.setItem('dna_results', JSON.stringify(results)); showToast('✅ Resultados de DNA guardados!', 'success'); renderAdminLeaderboard(); }
+function clearDNA() { if (!confirm('Limpar todos os resultados de DNA?')) return; dnaResults = {}; localStorage.removeItem('dna_results'); CATEGORIES.forEach(cat => { const inp = document.getElementById(`dna-${cat.id}`); if (inp) inp.value = ''; }); updateDNATotal(); showToast('Resultados de DNA limpos.', 'info'); }
+
+// ══════════════════════════════════════════════════════════
+// 🏆  SCORING & LEADERBOARD
+// ══════════════════════════════════════════════════════════
+function calculateScore(submission, dna) { const sorted = Object.entries(dna).sort((a,b) => b[1] - a[1]).filter(([,v]) => v > 0); const top3 = sorted.slice(0, 3).map(([k]) => k); const g = [submission.guess1 || submission.Guess1 || '', submission.guess2 || submission.Guess2 || '', submission.guess3 || submission.Guess3 || '']; let points = 0, bonus = 0; g.forEach(guess => { if (top3.includes(guess)) points++; }); g.forEach((guess, i) => { if (top3[i] && guess === top3[i]) bonus++; }); const guessedPcts = {}; const weights = [50, 30, 20]; g.forEach((guess, i) => { if (guess) guessedPcts[guess] = weights[i]; }); let tiebreaker = 0; CATEGORIES.forEach(cat => { const actual = dna[cat.id] || 0; const guessed = guessedPcts[cat.id] || 0; tiebreaker += Math.abs(actual - guessed); }); return { points, bonus, total: points + bonus, tiebreaker, top3 }; }
+function getScores() { if (!Object.keys(dnaResults).length || !allSubmissions.length) return []; return allSubmissions.map(s => ({ ...s, score: calculateScore(s, dnaResults) })).sort((a, b) => b.score.total - a.score.total || a.score.tiebreaker - b.score.tiebreaker); }
+function renderAdminLeaderboard() { const container = document.getElementById('admin-leaderboard-container'); const info = document.getElementById('lb-info'); if (!Object.keys(dnaResults).length) { container.innerHTML = '<div class="empty-state">Insere primeiro os resultados de DNA.</div>'; info.innerHTML = '⚠️ Ainda não há resultados de DNA guardados.'; return; } if (!allSubmissions.length) { container.innerHTML = '<div class="empty-state">Ainda não há palpites para pontuar.</div>'; info.innerHTML = 'Resultados de ADN carregados. A aguardar palpites.'; return; } const scores = getScores(); const sorted = Object.entries(dnaResults).sort((a,b)=>b[1]-a[1]).slice(0,3); info.innerHTML = `✅ Resultados de DNA carregados. Top 3: ${sorted.map(([k,v]) => `<strong>${catLabel(k)}</strong> ${v}%`).join(' · ')}`; renderLeaderboardList(scores, container); }
+function renderLeaderboardList(scores, container) { const medals = ['🥇','🥈','🥉']; const html = scores.map((s, i) => { const name = s.name || s.Name || 'Anónimo'; const g = [s.guess1||s.Guess1||'', s.guess2||s.Guess2||'', s.guess3||s.Guess3||'']; return `<div class="leader-card"><div class="leader-rank">${medals[i] || '#' + (i+1)}</div><div class="leader-info"><div class="leader-name">${esc(name)}</div><div class="leader-guesses">${g.map(catLabel).join(' → ')}<span style="color:var(--sage-dk);margin-left:6px">(+${s.score.bonus} bónus)</span></div></div><div class="leader-score"><div class="leader-pts">${s.score.total}</div><div class="leader-pts-label">pts</div></div></div>`; }).join(''); container.innerHTML = `<div class="leaderboard-list">${html}</div>`; }
+function renderPublicLeaderboard() { const container = document.getElementById('public-leaderboard'); const dna = JSON.parse(localStorage.getItem('dna_results') || 'null'); const subs = JSON.parse(localStorage.getItem('dna_guesses') || '[]'); const useSubs = allSubmissions.length ? allSubmissions : subs; const useDNA = Object.keys(dnaResults).length ? dnaResults : dna; if (!useDNA) { document.getElementById('results-not-revealed').style.display = 'block'; container.innerHTML = '<div class="empty-state">Resultados não disponiveis </div>'; document.getElementById('personal-lookup-box').style.opacity = '.5'; document.getElementById('personal-lookup-box').style.pointerEvents = 'none'; return; } document.getElementById('results-not-revealed').style.display = 'none'; document.getElementById('personal-lookup-box').style.opacity = ''; document.getElementById('personal-lookup-box').style.pointerEvents = ''; if (!useSubs.length) { container.innerHTML = '<div class="empty-state">Ainda não há palpites!</div>'; return; } const scores = useSubs.map(s => ({ ...s, score: calculateScore(s, useDNA) })).sort((a,b) => b.score.total - a.score.total || a.score.tiebreaker - b.score.tiebreaker); renderLeaderboardList(scores, container); }
+function lookupScore() { const name = document.getElementById('lookup-name').value.trim().toLowerCase(); const resultEl = document.getElementById('personal-result'); if (!name) { resultEl.classList.remove('visible'); return; } const dna = Object.keys(dnaResults).length ? dnaResults : JSON.parse(localStorage.getItem('dna_results') || 'null'); const subs = allSubmissions.length ? allSubmissions : JSON.parse(localStorage.getItem('dna_guesses') || '[]'); if (!dna) { resultEl.textContent = 'Resultados não disponiveis'; resultEl.classList.add('visible'); return; } const scores = subs.map(s => ({...s, score: calculateScore(s, dna)})).sort((a,b) => b.score.total - a.score.total || a.score.tiebreaker - b.score.tiebreaker); const idx = scores.findIndex(s => (s.name||s.Name||'').toLowerCase() === name); if (idx === -1) { resultEl.textContent = `Não foi possível encontrar "${document.getElementById('lookup-name').value}".`; } else { const s = scores[idx]; const medals = ['🥇','🥈','🥉']; const rank = idx + 1; const g = [s.guess1||s.Guess1||'', s.guess2||s.Guess2||'', s.guess3||s.Guess3||'']; resultEl.innerHTML = `<strong>${medals[idx]||'#'+rank} ${esc(s.name||s.Name)}</strong> — Posição #${rank} de ${scores.length}<br>Pontuação: <strong>${s.score.total} pts</strong> (${s.score.points} correspondências + ${s.score.bonus} bónus de posição)<br>Palpites: ${g.map(catLabel).join(' → ')}`; } resultEl.classList.add('visible'); }
+
+// ══════════════════════════════════════════════════════════
+// 📁  EXPORT CSV
+// ══════════════════════════════════════════════════════════
+function exportCSV() { if (!allSubmissions.length) { showToast('Sem dados para exportar.', 'error'); return; } const headers = ['#','Nome','Email','Palpite1','Palpite2','Palpite3','Timestamp']; const rows = allSubmissions.map((r,i) => [i+1, r.name||r.Name||'', r.email||r.Email||'', r.guess1||r.Guess1||'', r.guess2||r.Guess2||'', r.guess3||r.Guess3||'', r.timestamp||r.Timestamp||''].map(v => `"${String(v).replace(/"/g,'""')}"`)); const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n'); const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = 'dna-origins-guesses.csv'; a.click(); }
+
+// ══════════════════════════════════════════════════════════
+// 🛠️  HELPERS
+// ══════════════════════════════════════════════════════════
+function catLabel(id) { if (!id) return '—'; const cat = CAT_MAP[id]; return cat ? `${cat.label}` : id; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(ts) { if (!ts) return '—'; try { return new Date(ts).toLocaleDateString('pt-PT', {day:'numeric',month:'short',year:'numeric'}); } catch(e) { return ts; } }
+let toastTimer; function showToast(msg, type = 'info') { const el = document.getElementById('toast'); el.textContent = msg; el.className = 'show ' + type; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = '', 3500); }
+
+// ══════════════════════════════════════════════════════════
+// 🚀  INIT
+// ══════════════════════════════════════════════════════════
+function attachMapClickHandlers() {
+  Object.keys(REGION_TO_CATEGORY).forEach(regionId => {
+    const region = document.getElementById(regionId);
+    if (region) {
+      region.style.cursor = 'pointer';
+      region.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const categoryId = REGION_TO_CATEGORY[regionId];
+        if (categoryId) {
+          selectCategory(categoryId);
+          region.style.opacity = '0.9';
+          setTimeout(() => {
+            if (region.getAttribute('data-permanent') !== 'true') {
+              region.style.opacity = '';
+            }
+          }, 200);
+        }
+      });
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCategoryGrid();
+  loadDNAFromStorage();
+  attachMapClickHandlers();
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+  GOOGLE APPS SCRIPT CODE
+  ─────────────────────────────────────────────────────────
+  Copy EVERYTHING between the dashes below into your
+  Google Apps Script editor at script.google.com
+  (via Extensions → Apps Script in your Google Sheet)
+
+  Replace YOUR_SPREADSHEET_ID with your actual Sheet ID.
+
+─────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════
+//  DNA ORIGINS GAME — Google Apps Script
+//  Paste this into script.google.com and deploy as Web App
+// ═══════════════════════════════════════════════════════
+
+const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';
+const GUESSES_SHEET   = 'Guesses';   // Sheet tab name for guesses
+const DNA_SHEET       = 'DNA';       // Sheet tab name for DNA results
+
+function doGet(e) {
+  const action = e.parameter.action;
+  try {
+    if (action === 'getGuesses') return jsonResponse(getGuesses());
+    if (action === 'getDNA')     return jsonResponse(getDNA());
+    return jsonResponse({ status: 'ok', message: 'DNA Origins Game API' });
+  } catch(err) {
+    return jsonResponse({ status: 'error', message: err.toString() });
+  }
+}
+
+function doPost(e) {
+  let data = {};
+  try {
+    // Try JSON body first
+    if (e.postData && e.postData.type === 'application/json') {
+      data = JSON.parse(e.postData.contents);
+    } else if (e.postData && e.postData.contents) {
+      // Parse URL-encoded form data
+      e.postData.contents.split('&').forEach(pair => {
+        const [k, v] = pair.split('=').map(decodeURIComponent);
+        data[k] = v;
+      });
+    } else {
+      data = e.parameter;
+    }
+  } catch(err) { data = e.parameter || {}; }
+
+  try {
+    const action = data.action;
+    if (action === 'addGuess') return jsonResponse(addGuess(data));
+    if (action === 'saveDNA')  return jsonResponse(saveDNA(data));
+    return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
+  } catch(err) {
+    return jsonResponse({ status: 'error', message: err.toString() });
+  }
+}
+
+// ── GET: all guesses ─────────────────────────────────────
+function getGuesses() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(GUESSES_SHEET);
+  if (!sheet) return { status: 'ok', data: [] };
+
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { status: 'ok', data: [] };
+
+  const headers = rows[0].map(h => h.toString().toLowerCase().trim());
+  const data = rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  }).filter(r => r.name || r.Name);
+
+  return { status: 'ok', data };
+}
+
+// ── POST: add guess ──────────────────────────────────────
+function addGuess(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(GUESSES_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(GUESSES_SHEET);
+    sheet.appendRow(['Timestamp','Name','Email','Guess1','Guess2','Guess3']);
+  }
+  sheet.appendRow([
+    data.timestamp || new Date().toISOString(),
+    data.name  || '',
+    data.email || '',
+    data.guess1 || '',
+    data.guess2 || '',
+    data.guess3 || ''
+  ]);
+  return { status: 'ok', message: 'Guess saved!' };
+}
+
+// ── GET: DNA results ─────────────────────────────────────
+function getDNA() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(DNA_SHEET);
+  if (!sheet) return { status: 'ok', data: null };
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { status: 'ok', data: null };
+  const result = {};
+  rows.slice(1).forEach(row => { if (row[0]) result[row[0]] = parseFloat(row[1]) || 0; });
+  return { status: 'ok', data: result };
+}
+
+// ── POST: save DNA results ───────────────────────────────
+function saveDNA(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(DNA_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(DNA_SHEET);
+    sheet.appendRow(['Category', 'Percentage']);
+  } else {
+    sheet.clearContents();
+    sheet.appendRow(['Category', 'Percentage']);
+  }
+  const dnaData = JSON.parse(data.results || '{}');
+  Object.entries(dnaData).forEach(([k, v]) => sheet.appendRow([k, v]));
+  return { status: 'ok', message: 'DNA results saved!' };
+}
+
+// ── Helpers ──────────────────────────────────────────────
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+─────────────────────────────────────────────────────────
+  END OF APPS SCRIPT CODE
+═══════════════════════════════════════════════════════ -->
+
+</body>
+</html>
