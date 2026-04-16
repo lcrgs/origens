@@ -115,12 +115,40 @@ body::before {
 /* ── Nav ───────────────────────────────────────── */
 nav {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(253,250,244,.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(139,92,62,.12);
+  backdrop-filter: blur(1px);
   padding: 14px 24px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px;
+}
+nav.transparent { background: rgba(253, 250, 244, 0); }
+#jump-scare-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.94);
+  opacity: 0; visibility: hidden;
+  pointer-events: none;
+  transition: opacity .18s ease, visibility .18s ease;
+}
+#jump-scare-overlay.visible {
+  opacity: 1; visibility: visible;
+  pointer-events: auto;
+}
+#jump-scare-overlay img {
+  max-width: 92vw; max-height: 92vh;
+  object-fit: contain; border-radius: 18px;
+  box-shadow: 0 0 40px rgba(0,0,0,.6);
+}
+.jump-scare-trigger {
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-block;
+  transition: color .2s ease, background .2s ease;
+}
+.jump-scare-trigger:hover,
+.jump-scare-trigger:focus {
+  text-decoration: underline;
+  background: rgba(255,255,255,.08);
+  border-radius: 6px;
 }
 .nav-brand {
   font-family: var(--font-display);
@@ -161,32 +189,32 @@ nav {
 #home { padding: 0; }
 
 .hero {
-  min-height: 52vh;
+  min-height: 65vh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   text-align: center;
-  padding: 64px 24px 48px;
+  padding: 80px 24px 60px;
   background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,121,90,.18) 0%, transparent 70%),
               radial-gradient(ellipse 60% 50% at 30% 80%, rgba(126,158,130,.16) 0%, transparent 60%);
 }
 .hero-eyebrow {
   font-size: .8rem; font-weight: 800;
   letter-spacing: .18em; text-transform: uppercase;
-  color: var(--terra); margin-bottom: 16px;
+  color: var(--terra); margin-bottom: 20px;
 }
 .hero h1 {
   font-family: var(--font-display);
   font-size: clamp(2.6rem, 7vw, 5.5rem);
   font-weight: 700; line-height: 1.05;
   color: var(--dark);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
-.hero h1 em { color: var(--terra); font-style: italic; }
+.hero h1 em { color: var(--terra); font-style: italic; font-size: 0.6em; font-family: var(--font-body); }
 .hero-sub {
   font-size: clamp(.95rem, 2.5vw, 1.15rem);
-  color: var(--mid); max-width: 520px;
+  color: var(--mid); max-width: 550px;
   line-height: 1.65;
-  margin-bottom: 36px;
+  margin-bottom: 48px;
 }
 .hero-cta {
   display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
@@ -626,7 +654,6 @@ tr:hover td { background: rgba(244,234,213,.5); }
 
 /* But regions themselves should be clickable */
 .region-highlight {
-  
   pointer-events: auto !important;
   cursor: pointer;
   transition: opacity 0.2s ease, stroke-width 0.2s ease;
@@ -708,44 +735,38 @@ tr:hover td { background: rgba(244,234,213,.5); }
 
 <!-- ═══ NAV ═══════════════════════════════════════════ -->
 <nav>
-  <div class="nav-brand" onclick="showPage('home')">目 <span>De onde vem a Leo?</div>
+  <div class="nav-brand" onclick="showPage('home')" style="display: flex; align-items: center; gap: 10px;"><img src="eu.png" alt="Leo" style="width: 5%; height: auto;"> <span>De onde vem a Leo?</span></div>
   <div class="nav-links">
-    <button class="nav-btn active" onclick="showPage('home')" id="nav-home">Início</button>
-    <button class="nav-btn" onclick="showPage('guess-form')" id="nav-form">Aposta</button>
-    <button class="nav-btn" onclick="showPage('leaderboard-page')" id="nav-lb">Classificação</button>
-    <button class="nav-btn admin-link" onclick="showPage('admin')" id="nav-admin">Administração</button>
+    <button class="nav-btn admin-link" onclick="showPage('admin')" id="nav-admin">admin</button>
   </div>
 </nav>
+<div id="jump-scare-overlay" onclick="this.classList.remove('visible')">
+  <img src="do.png" alt="" aria-hidden="true">
+</div>
+<audio id="jump-scare-sound" src="do.mp3" preload="auto"></audio>
 
 <!-- ═══ HOME PAGE ═══════════════════════════════════════ -->
 <section id="home" class="page active">
   <div class="hero">
-    <div class="dna-strand">目</div>
+    <div class="dna-strand"><img src="eu.png" alt="Leo" style="width: 15%; height: auto;"> </div>
     <div class="hero-eyebrow">todos se perguntam</div>
-    <h1>De onde vem a Leo?<br><em>Vamos descobrir.</em></h1>
-    <p class="hero-sub">
-      Sempre quisemos saber a resposta à mitica frase de Daniel Oliveira: 
-      <strong>o que dizem os teus olhos?</strong> 
-    </p>
+    <h1>De onde vem a Leo?<br></h1>
+<div class="hero-eyebrow">Sempre quisemos saber a resposta à mitica frase de Daniel Oliveira:</div>
     <div class="hero-cta">
-      <button class="btn btn-primary" onclick="showPage('guess-form')">Aposta</button>
+      <button class="btn btn-primary" onclick="triggerJumpScareAndScroll()">"O que dizem os teus olhos?"</button>
     </div>
   </div>
-  
-</section>
-
-<!-- ═══ GUESS FORM ══════════════════════════════════════ -->
-<section id="guess-form" class="page">
-  <div style="max-width:860px; margin:0 auto; padding:48px 24px 72px;">
+    <div id="guess-form-section" style="display: none; max-width:860px; margin:0 auto; padding:48px 24px 72px;">
     <div class="form-header">
-      <h2>Aposta</h2>
+      
+      <h2>Palpite</h2>
       <p>Escolhe <strong>o teu top 3 de origens</strong>.</p>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label for="inp-name">Nome *</label>
-        <input type="text" id="inp-name" placeholder="Maria Albertina" maxlength="60">
+        <input type="text" id="inp-name" placeholder="Maria Albertina" maxlength="60" style="text-align: center;">
       </div>
 
     </div>
@@ -775,9 +796,7 @@ tr:hover td { background: rgba(244,234,213,.5); }
 
     <!-- Map -->
   <div class="map-section">
-  <h3>Mapa do mundo</h3>
-  <p class="map-hint">Passa o rato por uma categoria abaixo para destacar a sua região no mapa.</p>
-  
+ 
 
     <!-- SVG overlay with actual region paths -->
 <div class="map-container" style="position: relative; width: 100%;">
@@ -880,12 +899,15 @@ tr:hover td { background: rgba(244,234,213,.5); }
     <!-- Submit -->
     <div class="form-submit-area">
       <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" style="width:100%;max-width:360px;font-size:1.05rem;padding:18px;">
-        Apostar!
+        Mandar palpite
       </button>
-      <p class="form-note">A tua aposta vai ser guardada e revelada.</p>
+      <p class="form-note">O teu palpite vai ser guardado e revelado mais tarde.</p>
     </div>
   </div>
+  
 </section>
+
+
 
 <!-- ═══ ADMIN PAGE ══════════════════════════════════════ -->
 <section id="admin" class="page">
@@ -904,7 +926,7 @@ tr:hover td { background: rgba(244,234,213,.5); }
   <!-- Panel -->
   <div id="admin-panel" class="hidden">
     <div class="admin-panel-header">
-      <h2>🧬 Painel de Administração</h2>
+      <h2> Painel de Administração</h2>
       <div class="flex-gap">
         <button class="btn btn-secondary btn-sm" onclick="loadGuesses()">↻ Atualizar</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
@@ -913,8 +935,8 @@ tr:hover td { background: rgba(244,234,213,.5); }
     </div>
 
     <div class="admin-tabs">
-      <button class="tab-btn active" onclick="showTab('tab-guesses')">📋 Todos os palpites</button>
-      <button class="tab-btn" onclick="showTab('tab-dna')">🧬 Inserir resultados de DNA</button>
+      <button class="tab-btn active" onclick="showTab('tab-guesses')"> Todos os palpites</button>
+      <button class="tab-btn" onclick="showTab('tab-dna')"> Inserir resultados de DNA</button>
       <button class="tab-btn" onclick="showTab('tab-leaderboard')">Classificação</button>
     </div>
 
@@ -944,8 +966,8 @@ tr:hover td { background: rgba(244,234,213,.5); }
       </div>
 
       <div class="flex-gap mt-24">
-        <button class="btn btn-primary" onclick="saveDNA()">💾 Guardar resultados de DNA</button>
-        <button class="btn btn-secondary" onclick="clearDNA()">🗑 Limpar</button>
+        <button class="btn btn-primary" onclick="saveDNA()"> Guardar resultados de DNA</button>
+        <button class="btn btn-secondary" onclick="clearDNA()"> Limpar</button>
       </div>
     </div>
 
@@ -1181,7 +1203,7 @@ function updateCatButton(catId, slotIdx) {
     badge.classList.add('hidden'); 
     return; 
   }
-  const labels = ['1st','2nd','3rd'];
+  const labels = ['1','2','3'];
   btn.classList.add(`selected-${slotIdx+1}`);
   badge.textContent = labels[slotIdx];
   badge.classList.remove('hidden');
@@ -1190,35 +1212,122 @@ function updateCatButton(catId, slotIdx) {
 // ══════════════════════════════════════════════════════════
 // 📤  FORM SUBMISSION
 // ══════════════════════════════════════════════════════════
+async function getExistingGuesses() {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+    return JSON.parse(localStorage.getItem('dna_guesses') || '[]');
+  } else {
+    try {
+      const res = await fetch(`${APPS_SCRIPT_URL}?action=getGuesses`);
+      const json = await res.json();
+      return json.data || [];
+    } catch {
+      return [];
+    }
+  }
+}
+
 async function submitGuess() {
+
+  const btn = document.getElementById('submit-btn');
+  const originalText = btn.textContent;
+  
+  // ─── 1º ESTÁGIO: Feedback imediato (ANTES das validações pesadas) ───
+  btn.textContent = 'A processar...';
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+  btn.style.cursor = 'wait';
+  
+  // Pequeno delay para garantir que o UI atualiza (opcional, mas ajuda)
+  await new Promise(resolve => setTimeout(resolve, 10));
+  
+  // ─── VALIDAÇÕES (agora com feedback visual já ativo) ───
   const name = document.getElementById('inp-name').value.trim();
   const email = document.getElementById('inp-email')?.value.trim() || '';
-  if (!name) { showToast('Por favor, escreve o teu nome!', 'error'); return; }
-  if (guesses.filter(Boolean).length < 3) { showToast('Por favor, escolhe os 3 palpites!', 'error'); return; }
-  const btn = document.getElementById('submit-btn');
-  btn.textContent = '⏳ A enviar…'; btn.disabled = true;
-  const payload = { action: 'addGuess', name, email, guess1: guesses[0], guess2: guesses[1], guess3: guesses[2], timestamp: new Date().toISOString() };
+  
+  if (!name) { 
+    showToast('Por favor, escreve o teu nome!', 'error');
+    // Restaura botão antes de sair
+    btn.textContent = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    return; 
+  }
+  
+  if (guesses.filter(Boolean).length < 3) { 
+    showToast('Por favor, escolhe os 3 palpites!', 'error');
+    btn.textContent = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    return; 
+  }
+
+  // ─── VERIFICAÇÃO DE DUPLICADOS (pode demorar) ───
+  try {
+    const existingGuesses = await getExistingGuesses();
+    if (existingGuesses.some(g => (g.name || g.Name || '').toLowerCase().trim() === name.toLowerCase().trim())) {
+      showToast('Já existe um palpite com esse nome!', 'error');
+      btn.textContent = originalText;
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      return;
+    }
+  } catch (err) {
+    console.error('Erro ao verificar duplicados:', err);
+    // Continua mesmo com erro - não bloquear o utilizador
+  }
+
+  // ─── 2º ESTÁGIO: A enviar (antes do fetch) ───
+  btn.textContent = 'A enviar...';
+
+  const payload = { 
+    action: 'addGuess', 
+    name, 
+    email, 
+    guess1: guesses[0], 
+    guess2: guesses[1], 
+    guess3: guesses[2], 
+    timestamp: new Date().toISOString() 
+  };
+  
   try {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
       const existing = JSON.parse(localStorage.getItem('dna_guesses') || '[]');
       existing.push(payload);
       localStorage.setItem('dna_guesses', JSON.stringify(existing));
-      showToast('✅ Palpite guardado (modo demo)', 'success');
+      showToast('Palpite guardado (modo demo)', 'success');
     } else {
       await fetch(APPS_SCRIPT_URL, { method: 'POST', body: new URLSearchParams(payload) });
-      showToast('✅ Palpite enviado! Boa sorte!', 'success');
+      showToast('Palpite enviado!', 'success');
     }
-    guesses = ['','','']; activeSlot = 0;
+    
+    // Reset form após sucesso
+    guesses = ['','','']; 
+    activeSlot = 0;
     for (let i = 0; i < 3; i++) updateSlotDisplay(i);
     CATEGORIES.forEach(c => updateCatButton(c.id, -1));
     setNextActiveSlot();
     updatePermanentHighlights();
     document.getElementById('inp-name').value = '';
     if (document.getElementById('inp-email')) document.getElementById('inp-email').value = '';
+    
     setTimeout(() => showPage('home'), 1500);
-  } catch(err) { showToast('Algo correu mal.', 'error'); console.error(err);
-  } finally { btn.textContent = '🧬 Enviar o meu palpite'; btn.disabled = false; }
+    
+  } catch(err) { 
+    showToast('Algo correu mal. Tenta novamente.', 'error'); 
+    console.error(err);
+  } finally { 
+    // ─── RESTAURA O BOTÃO ───
+    btn.textContent = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+  }
 }
+
+
 
 // ══════════════════════════════════════════════════════════
 // 🔐  ADMIN (simplified - keep your existing functions)
@@ -1241,7 +1350,7 @@ function showTab(tabId) { document.querySelectorAll('.tab-pane').forEach(p => p.
 // 📊  LOAD GUESSES (simplified)
 // ══════════════════════════════════════════════════════════
 async function loadGuesses() { const wrap = document.getElementById('guesses-table-wrap'); wrap.innerHTML = '<div class="empty-state">A carregar…</div>'; try { let data = []; if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') { data = JSON.parse(localStorage.getItem('dna_guesses') || '[]'); } else { const res = await fetch(`${APPS_SCRIPT_URL}?action=getGuesses`); const json = await res.json(); data = json.data || []; } allSubmissions = data; renderGuessTable(data); } catch(err) { wrap.innerHTML = '<div class="empty-state">Erro ao carregar dados.</div>'; } }
-function renderGuessTable(data) { const wrap = document.getElementById('guesses-table-wrap'); if (!data.length) { wrap.innerHTML = '<div class="empty-state">Ainda não há palpites enviados.</div>'; return; } const rows = data.map((r, i) => `<tr><td>${i+1}</td><td><strong>${esc(r.name || r.Name || '')}</strong></td><td>${esc(r.email || r.Email || '—')}</td><td>${catLabel(r.guess1 || r.Guess1 || '')}</td><td>${catLabel(r.guess2 || r.Guess2 || '')}</td><td>${catLabel(r.guess3 || r.Guess3 || '')}</td><td>${fmtDate(r.timestamp || r.Timestamp || '')}</td></tr>`).join(''); wrap.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Email</th><th>🥇 1.º</th><th>🥈 2.º</th><th>🥉 3.º</th><th>Quando</th></tr></thead><tbody>${rows}</tbody></table>`; }
+function renderGuessTable(data) { const wrap = document.getElementById('guesses-table-wrap'); if (!data.length) { wrap.innerHTML = '<div class="empty-state">Ainda não há palpites enviados.</div>'; return; } const rows = data.map((r, i) => `<tr><td>${i+1}</td><td><strong>${esc(r.name || r.Name || '')}</strong></td><td>${esc(r.email || r.Email || '—')}</td><td>${catLabel(r.guess1 || r.Guess1 || '')}</td><td>${catLabel(r.guess2 || r.Guess2 || '')}</td><td>${catLabel(r.guess3 || r.Guess3 || '')}</td><td>${fmtDate(r.timestamp || r.Timestamp || '')}</td></tr>`).join(''); wrap.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Email</th><th> 1.º</th><th> 2.º</th><th> 3.º</th><th>Quando</th></tr></thead><tbody>${rows}</tbody></table>`; }
 
 // ══════════════════════════════════════════════════════════
 // 🧬  DNA RESULTS
@@ -1304,6 +1413,76 @@ document.addEventListener('DOMContentLoaded', () => {
   initCategoryGrid();
   loadDNAFromStorage();
   attachMapClickHandlers();
+
+  const jumpTrigger = document.querySelector('.jump-scare-trigger');
+  const jumpOverlay = document.getElementById('jump-scare-overlay');
+  let jumpScareVisibleAt = 0;
+  let jumpHideTimer = null;
+
+  const jumpSound = document.getElementById('jump-scare-sound');
+  const showJumpScare = () => {
+    if (!jumpOverlay) return;
+    if (jumpHideTimer) {
+      clearTimeout(jumpHideTimer);
+      jumpHideTimer = null;
+    }
+    if (!jumpOverlay.classList.contains('visible')) {
+      jumpOverlay.classList.add('visible');
+      jumpScareVisibleAt = Date.now();
+      if (jumpSound) {
+        jumpSound.currentTime = 0;
+        jumpSound.play().catch(() => {});
+      }
+    }
+    jumpHideTimer = setTimeout(() => {
+      if (jumpOverlay) {
+        jumpOverlay.classList.remove('visible');
+      }
+      jumpHideTimer = null;
+    }, 2000);
+  };
+
+  const hideJumpScare = () => {
+    if (!jumpOverlay) return;
+    if (jumpHideTimer) {
+      clearTimeout(jumpHideTimer);
+      jumpHideTimer = null;
+    }
+    jumpOverlay.classList.remove('visible');
+  };
+
+  if (jumpTrigger) {
+    jumpTrigger.addEventListener('click', showJumpScare);
+    jumpTrigger.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        showJumpScare();
+      }
+    });
+  }
+
+  window.triggerJumpScareAndScroll = () => {
+    showJumpScare();
+    const section = document.getElementById('guess-form-section');
+    if (section) {
+      section.style.display = 'block';
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  if (jumpOverlay) {
+    jumpOverlay.addEventListener('click', hideJumpScare);
+  }
+
+  const dnaImg = document.querySelector('.dna-strand img');
+  if (dnaImg) {
+    dnaImg.addEventListener('mouseenter', () => dnaImg.src = 'eu_asian.png');
+    dnaImg.addEventListener('mouseleave', () => dnaImg.src = 'eu.png');
+  }
+
+  window.addEventListener('scroll', () => {
+    document.querySelector('nav').classList.toggle('transparent', window.scrollY > 50);
+  });
 });
 </script>
 
