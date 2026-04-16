@@ -158,6 +158,18 @@ nav.transparent { background: rgba(253, 250, 244, 0); }
   color: var(--dark);
   white-space: nowrap;
   cursor: pointer;
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+.nav-brand img:hover {
+  transform: rotate(15deg);
+}
+.nav-brand img.rotate-click {
+  animation: nav-spin 0.5s ease-in-out;
+}
+@keyframes nav-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 .nav-brand span { color: var(--terra); }
 .nav-links {
@@ -255,10 +267,45 @@ nav.transparent { background: rgba(253, 250, 244, 0); }
   font-size: 2.5rem; margin-bottom: 8px;
   animation: spin-slow 8s linear infinite;
   display: inline-block;
+  transition: transform 0.2s ease;
+  cursor: pointer;
 }
 @keyframes spin-slow {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+
+
+.dna-strand img.jump-spin {
+  animation: jumpSpin 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes jumpSpin {
+     0% {
+    transform: rotate(0deg);
+    filter: brightness(1) drop-shadow(0 0 0px rgba(192,121,90,0));
+  }
+  25% {
+    transform: rotate(90deg);
+    filter: brightness(1.3) drop-shadow(0 0 8px rgba(192,121,90,0.8));
+  }
+  50% {
+    transform: rotate(180deg);
+    filter: brightness(1.5) drop-shadow(0 0 15px rgba(192,121,90,1));
+  }
+  75% {
+    transform: rotate(270deg);
+    filter: brightness(1.3) drop-shadow(0 0 8px rgba(192,121,90,0.8));
+  }
+  100% {
+    transform: rotate(360deg);
+    filter: brightness(1) drop-shadow(0 0 0px rgba(192,121,90,0));
+  }
+}
+
+.dna-strand img.jump-spin {
+  animation: jumpSpin 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 /* Clue Cards */
@@ -736,8 +783,10 @@ tr:hover td { background: rgba(244,234,213,.5); }
 
 <!-- ═══ NAV ═══════════════════════════════════════════ -->
 <nav>
-  <div class="nav-brand" onclick="showPage('home')" style="display: flex; align-items: center; gap: 10px;"><img src="eu.png" alt="Leo" style="width: 5%; height: auto;"> <span>De onde vem a Leo?</span></div>
-  <div class="nav-links">
+<div class="nav-brand" onclick="showPage('home'); rotateNavImage();" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+  <img src="eu.png" alt="Leo" style="width: 5%; height: auto;"> 
+  <span>De onde vem a Leo?</span>
+</div> <div class="nav-links">
     <button class="nav-btn admin-link" onclick="showPage('admin')" id="nav-admin">admin</button>
   </div>
 </nav>
@@ -749,12 +798,16 @@ tr:hover td { background: rgba(244,234,213,.5); }
 <!-- ═══ HOME PAGE ═══════════════════════════════════════ -->
 <section id="home" class="page active">
   <div class="hero">
-    <div class="dna-strand"><img src="eu.png" alt="Leo" style="width: 15%; height: auto;"> </div>
-    <div class="hero-eyebrow">todos se perguntam</div>
+<div class="dna-strand">
+  <img src="eu.png" alt="Leo" style="width: 15%; height: auto; cursor: pointer;" onclick="jumpAndSpinDNA();">
+</div>    <div class="hero-eyebrow">todos se perguntam</div>
     <h1>De onde vem a Leo?<br></h1>
 <div class="hero-eyebrow">Sempre quisemos saber a resposta à mitica frase de Daniel Oliveira:</div>
     <div class="hero-cta">
       <button class="btn btn-primary" onclick="triggerJumpScareAndScroll()">"O que dizem os teus olhos?"</button>
+      <div id="hero-answer-counter" style="font-size: 0.85rem; color: var(--mid); margin-top: 8px; text-align: center;">
+    <span id="hero-answer-count">--</span> palpites até agora
+  </div>
     </div>
   </div>
     <div id="guess-form-section" style="display: none; max-width:860px; margin:0 auto; padding:48px 24px 72px;">
@@ -899,6 +952,9 @@ tr:hover td { background: rgba(244,234,213,.5); }
       <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" style="width:100%;max-width:360px;font-size:1.05rem;padding:18px;">
         Mandar palpite
       </button>
+       <div id="answer-counter" style="font-size: 0.85rem; color: var(--mid); margin-top: 8px; text-align: center;">
+    <span id="answer-count">--</span> palpites até agora
+  </div>
       <p class="form-note">O teu palpite vai ser guardado e revelado mais tarde.</p>
     </div>
   </div>
@@ -1071,6 +1127,40 @@ function showPage(id) {
   if (id === 'leaderboard-page') renderPublicLeaderboard();
   if (id === 'admin' && adminUnlocked) { loadGuesses(); loadDNAInputs(); }
 }
+// Function to rotate navbar image when clicked
+// Function to rotate navbar image 360 degrees when clicked
+function rotateNavImage() {
+  const navImg = document.querySelector('.nav-brand img');
+  if (navImg) {
+    // Remove the class if it's already there
+    navImg.classList.remove('rotate-click');
+    // Force a reflow to restart the animation
+    void navImg.offsetWidth;
+    // Add the class to trigger animation
+    navImg.classList.add('rotate-click');
+    // Remove the class after animation completes
+    setTimeout(() => {
+      navImg.classList.remove('rotate-click');
+    }, 500);
+  }
+}
+
+// Function to make DNA image jump and spin when clicked
+function jumpAndSpinDNA() {
+  const dnaImg = document.querySelector('.dna-strand img');
+  if (dnaImg) {
+    // Remove class if exists
+    dnaImg.classList.remove('jump-spin');
+    // Force reflow to restart animation
+    void dnaImg.offsetWidth;
+    // Add class to trigger animation
+    dnaImg.classList.add('jump-spin');
+    // Remove class after animation completes
+    setTimeout(() => {
+      dnaImg.classList.remove('jump-spin');
+    }, 600);
+  }
+}
 
 // ══════════════════════════════════════════════════════════
 // 🗺️  MAP INTERACTION
@@ -1224,6 +1314,27 @@ async function getExistingGuesses() {
   }
 }
 
+// Function to update both answer counters
+async function updateAnswerCount() {
+  const heroCountElement = document.getElementById('hero-answer-count');
+  const formCountElement = document.getElementById('answer-count');
+  
+  if (!heroCountElement && !formCountElement) return;
+  
+  try {
+    const guesses = await getExistingGuesses();
+    const count = guesses.length;
+    
+    // Update both counters if they exist
+    if (heroCountElement) heroCountElement.textContent = count;
+    if (formCountElement) formCountElement.textContent = count;
+  } catch (err) {
+    console.error('Error updating count:', err);
+    if (heroCountElement) heroCountElement.textContent = '?';
+    if (formCountElement) formCountElement.textContent = '?';
+  }
+}
+
 async function submitGuess() {
 
   const btn = document.getElementById('submit-btn');
@@ -1292,14 +1403,16 @@ async function submitGuess() {
   
   try {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-      const existing = JSON.parse(localStorage.getItem('dna_guesses') || '[]');
-      existing.push(payload);
-      localStorage.setItem('dna_guesses', JSON.stringify(existing));
-      showToast('Palpite guardado (modo demo)', 'success');
-    } else {
-      await fetch(APPS_SCRIPT_URL, { method: 'POST', body: new URLSearchParams(payload) });
-      showToast('Palpite enviado!', 'success');
-    }
+  const existing = JSON.parse(localStorage.getItem('dna_guesses') || '[]');
+  existing.push(payload);
+  localStorage.setItem('dna_guesses', JSON.stringify(existing));
+  showToast('Palpite guardado (modo demo)', 'success');
+  await updateAnswerCount(); // Add this line
+} else {
+  await fetch(APPS_SCRIPT_URL, { method: 'POST', body: new URLSearchParams(payload) });
+  showToast('Palpite enviado!', 'success');
+  await updateAnswerCount(); // Add this line
+}
     
     // Reset form após sucesso
     guesses = ['','','']; 
@@ -1446,6 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDNAFromStorage();
   attachMapClickHandlers();
   createAnimatedFavicon();
+  updateAnswerCount();
 
   const jumpTrigger = document.querySelector('.jump-scare-trigger');
   const jumpOverlay = document.getElementById('jump-scare-overlay');
@@ -1495,6 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.triggerJumpScareAndScroll = () => {
+
     showJumpScare();
     const section = document.getElementById('guess-form-section');
     if (section) {
